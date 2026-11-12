@@ -2609,7 +2609,8 @@ pub fn read_custom_client(config: &str) {
         log::error!("Failed to decode custom client config");
         return;
     };
-    const KEY: &str = "5Qbwsde3unUcJBtrx9ZkvUmwFNoExHzpryHuPUdqlWM=";
+    // VM Tech: only settings files signed with VM Tech's key are trusted (see vmtech/README.md).
+    const KEY: &str = "n+cqdRNxSjVwOBY6glqlcIUCtLb3T9yXf0K6bCxKBAQ=";
     let Some(pk) = get_rs_pk(KEY) else {
         log::error!("Failed to parse public key of custom client");
         return;
