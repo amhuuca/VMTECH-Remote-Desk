@@ -130,9 +130,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
-          foreach ($v in @(@{name='VMTechRemote-client'; cfg='vmtech/custom-client.txt'}, @{name='VMTechStaff'; cfg='vmtech/custom-staff.txt'})) {
+          foreach ($v in @(@{name='VMTechRemote-client'; exe='VMTechRemote.exe'; cfg='vmtech/custom-client.txt'}, @{name='VMTechStaff'; exe='VMTechStaff.exe'; cfg='vmtech/custom-staff.txt'})) {
             $dir = "out/$($v.name)"
             Copy-Item -Recurse ./rustdesk $dir
+            Rename-Item "$dir/rustdesk.exe" $v.exe
             Copy-Item $v.cfg "$dir/custom.txt"
             Copy-Item LICENCE "$dir/LICENCE-RustDesk-AGPL.txt"
             Compress-Archive -Path "$dir/*" -DestinationPath "out/$($v.name)-windows-x64.zip"
