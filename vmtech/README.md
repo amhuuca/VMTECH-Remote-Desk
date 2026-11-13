@@ -12,13 +12,16 @@ VM Tech (vmtech.ca) clients and staff. All credit for the remote desktop itself 
 - `.github/workflows/vmtech-windows.yml` — builds Windows x64 only and outputs two zips.
 
 ## The two apps (same program, different signed `custom.txt` next to the exe)
-- **VMTechRemote** (`custom-client.txt`, `VMTechRemote.exe`) — for clients: incoming only (shows "Your ID",
+- **VMTechDesk** (`custom-client.txt`, `VMTechDesk.exe`) — for clients: incoming only (shows "Your ID",
   can't connect out), VM Tech's server `rd.vmtech.ca`, asks the client to Accept by default.
   It reports connections (start/accepted/end, who connected) and online status to the VM Tech portal
   (`api-server` = `https://app.vmtech.ca/rd`, RustDesk's own built-in audit + heartbeat). Never screen contents,
   files or keystrokes.
 - **VMTechStaff** (`custom-staff.txt`, `VMTechStaff.exe`) — for VM Tech staff: outgoing only, same server.
   Opens `vmtechstaff://connection/new/<ID>` links from the portal once installed.
+
+The client is NOT called VMTechRemote: that name (service + `C:\\Program Files\\VMTechRemote`) is already taken by the
+VM Tech MeshCentral agent, and RustDesk installs to `Program Files\\<app name>`.
 
 App names have **no spaces** on purpose: RustDesk uses the app name unquoted in Windows install commands
 (`sc start <name>`, registry keys, the `<name>://` link type), so a space breaks installing.
