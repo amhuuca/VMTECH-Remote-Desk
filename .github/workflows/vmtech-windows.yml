@@ -29,6 +29,8 @@ jobs:
   build-windows:
     needs: [generate-bridge, build-topmost]
     runs-on: windows-2022
+    env:
+      HAS_SIGNING: ${{ secrets.AZURE_CLIENT_SECRET != '' && 'yes' || 'no' }}
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -125,6 +127,35 @@ jobs:
         with:
           name: topmostwindow-artifacts-x64
           path: "./rustdesk"
+
+      # Windows Smart App Control blocks unsigned programs AND unsigned DLLs, so sign every .exe/.dll we ship
+      # with VM Tech's Azure Artifact Signing (same account as the VM Tech Remote installer).
+      # Needs the fork's Actions secrets AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET.
+      - name: Sign the program files (Azure Artifact Signing)
+        if: ${{ env.HAS_SIGNING == 'yes' }}
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: vmtechsigning
+          certificate-profile-name: vmtech-public
+          files-folder: ${{ github.workspace }}\rustdesk
+          files-folder-filter: dll,exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Check the signature
+        if: ${{ env.HAS_SIGNING == 'yes' }}
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem ./rustdesk -Recurse -Include *.exe,*.dll | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' }
+          $bad | ForEach-Object { "NOT SIGNED: $($_.FullName)" }
+          (Get-AuthenticodeSignature ./rustdesk/rustdesk.exe) | Format-List Status, SignerCertificate
+          if ($bad) { exit 1 }
 
       - name: Make the two VM Tech apps
         shell: pwsh
