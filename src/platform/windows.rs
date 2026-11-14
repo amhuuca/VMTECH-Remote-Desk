@@ -1905,10 +1905,12 @@ fn get_uninstall(kill_self: bool, uninstall_printer: bool) -> ResultType<String>
     if exist \"{path}\" rd /s /q \"{path}\"
     if exist \"{start_menu}\" rd /s /q \"{start_menu}\"
     if exist \"%PUBLIC%\\Desktop\\{app_name}.lnk\" del /f /q \"%PUBLIC%\\Desktop\\{app_name}.lnk\"
+    {vmtech_desktop_del}
     if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\" del /f /q \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\"
     ",
         before_uninstall=get_before_uninstall(kill_self)?,
         uninstall_amyuni_idd=get_uninstall_amyuni_idd(),
+        vmtech_desktop_del = vmtech_desktop_del_cmd(&crate::get_app_name()),
         app_name = crate::get_app_name(),
     ))
 }
@@ -4996,10 +4998,33 @@ ProcessId=10136
     }
 }
 
+// VM Tech: shortcut names people see (the app name itself must stay without spaces).
+fn vmtech_shortcut_name(app_name: &str) -> Option<&'static str> {
+    match app_name {
+        "VMTechStaff" => Some("VM TECH Staff-RS"),
+        _ => None,
+    }
+}
+
+fn vmtech_desktop_del_cmd(app_name: &str) -> String {
+    match vmtech_shortcut_name(app_name) {
+        Some(n) => format!("if exist \"%PUBLIC%\\Desktop\\{n}.lnk\" del /f /q \"%PUBLIC%\\Desktop\\{n}.lnk\""),
+        None => String::new(),
+    }
+}
+
 // VM Tech: files copied from a downloaded zip keep the "from the internet" mark, and Smart App Control
-// then blocks the desktop / Start menu shortcuts. Clear the mark on our own installed files and shortcuts.
+// then blocks the desktop / Start menu shortcuts. Rename our shortcuts if needed, then clear the mark
+// on our own installed files and shortcuts.
 fn vmtech_unblock_cmd(path: &str, start_menu: &str, app_name: &str) -> String {
-    format!(
-        "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-ChildItem -LiteralPath '{path}' -Recurse -File -ErrorAction SilentlyContinue | Unblock-File; Get-Item -LiteralPath '%PUBLIC%\\Desktop\\{app_name}.lnk','{start_menu}\\{app_name}.lnk','{start_menu}\\Uninstall {app_name}.lnk','%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk' -ErrorAction SilentlyContinue | Unblock-File\""
+    let name = vmtech_shortcut_name(app_name).unwrap_or(app_name);
+    let mut cmd = String::new();
+    if name != app_name {
+        cmd = format!(
+            "if exist \"%PUBLIC%\\Desktop\\{app_name}.lnk\" move /Y \"%PUBLIC%\\Desktop\\{app_name}.lnk\" \"%PUBLIC%\\Desktop\\{name}.lnk\"\r\nif exist \"{start_menu}\\{app_name}.lnk\" move /Y \"{start_menu}\\{app_name}.lnk\" \"{start_menu}\\{name}.lnk\"\r\n"
+        );
+    }
+    cmd + &format!(
+        "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-ChildItem -LiteralPath '{path}' -Recurse -File -ErrorAction SilentlyContinue | Unblock-File; Get-Item -LiteralPath '%PUBLIC%\\Desktop\\{name}.lnk','{start_menu}\\{name}.lnk','{start_menu}\\Uninstall {app_name}.lnk','%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk' -ErrorAction SilentlyContinue | Unblock-File\""
     )
 }
