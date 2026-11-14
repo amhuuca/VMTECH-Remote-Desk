@@ -35,3 +35,11 @@ The settings files are signed; the private signing key is NOT in this repository
 - `custom-inside.txt` (inside version, staff only — VM Tech's own PCs or a trusted business with a signed agreement):
   default "click", and the VM Tech Remote Support (Inside) app may switch it to "connect anytime" with a hidden password.
 - Both are the same program (`VMTechDesk.exe`); only custom.txt differs.
+
+## VM Tech Product Support (free, Nov 2026)
+- `custom-product.txt`, app `VMTechSupport` (`VMTechSupport.exe`, installs to Program Files\VMTechSupport — separate from the paid
+  VMTechDesk, so both can be on one PC).
+- For customers of VM TECH's products (POS AZ, Book AZ, …): works like UltraViewer. The window shows an **ID and a 6-digit
+  one-time password**; the customer reads both to us, or clicks **Accept** when we connect (approve-mode both). The password
+  changes after every successful connection (and after 10 wrong tries).
+- Reports go to `https://app.vmtech.ca/rdp` → the portal logs these sessions at $0 (never billed).
