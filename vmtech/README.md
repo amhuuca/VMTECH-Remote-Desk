@@ -27,3 +27,11 @@ App names have **no spaces** on purpose: RustDesk uses the app name unquoted in 
 (`sc start <name>`, registry keys, the `<name>://` link type), so a space breaks installing.
 
 The settings files are signed; the private signing key is NOT in this repository.
+
+## Public vs inside client (Nov 2026)
+- `custom-client.txt` (public, on vmtech.ca): **approve-mode is locked to "click"** in override-settings, so the client
+  must click Accept for every connection — no password can open it, even if someone sets one. This keeps the promise in
+  VM Tech's Terms/Privacy ("we only connect when you click Allow, every time").
+- `custom-inside.txt` (inside version, staff only — VM Tech's own PCs or a trusted business with a signed agreement):
+  default "click", and the VM Tech Remote Support (Inside) app may switch it to "connect anytime" with a hidden password.
+- Both are the same program (`VMTechDesk.exe`); only custom.txt differs.

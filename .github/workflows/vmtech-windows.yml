@@ -163,7 +163,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
-          foreach ($v in @(@{name='VMTechDesk-client'; exe='VMTechDesk.exe'; cfg='vmtech/custom-client.txt'}, @{name='VMTechStaff'; exe='VMTechStaff.exe'; cfg='vmtech/custom-staff.txt'})) {
+          foreach ($v in @(@{name='VMTechDesk-client'; exe='VMTechDesk.exe'; cfg='vmtech/custom-client.txt'}, @{name='VMTechDesk-inside'; exe='VMTechDesk.exe'; cfg='vmtech/custom-inside.txt'}, @{name='VMTechStaff'; exe='VMTechStaff.exe'; cfg='vmtech/custom-staff.txt'})) {
             $dir = "out/$($v.name)"
             Copy-Item -Recurse ./rustdesk $dir
             Rename-Item "$dir/rustdesk.exe" $v.exe
@@ -178,6 +178,13 @@ jobs:
         with:
           name: VMTechDesk-client-windows-x64
           path: out/VMTechDesk-client-windows-x64.zip
+          if-no-files-found: error
+
+      - name: Upload VM Tech Desk inside version (trusted PCs, staff only)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: VMTechDesk-inside-windows-x64
+          path: out/VMTechDesk-inside-windows-x64.zip
           if-no-files-found: error
 
       - name: Upload VM Tech Staff
@@ -197,4 +204,4 @@ jobs:
           gh release view client-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create client-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "VM Tech Desk (client) - latest" \
               --notes "Signed VM Tech Desk client app for Windows x64. Installed by the VM Tech Remote installer. Based on RustDesk (AGPL-3.0); source: this repository, branch vmtech."
-          gh release upload client-latest out/VMTechDesk-client-windows-x64.zip out/VMTechStaff-windows-x64.zip --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload client-latest out/VMTechDesk-client-windows-x64.zip out/VMTechDesk-inside-windows-x64.zip out/VMTechStaff-windows-x64.zip --clobber --repo "$GITHUB_REPOSITORY"
