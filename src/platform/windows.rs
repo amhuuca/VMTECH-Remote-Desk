@@ -1798,6 +1798,7 @@ reg add {subkey} /f /v WindowsInstaller /t REG_DWORD /d 0
 {tray_shortcuts}
 {shortcuts}
 copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
+{vmtech_unblock}
 {dels}
 {import_config}
 {after_install}
@@ -1810,6 +1811,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
         sleep = if debug { "timeout 300" } else { "" },
         dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
+        vmtech_unblock = vmtech_unblock_cmd(&path, &start_menu, &app_name),
         import_config = get_import_config(&exe),
     );
     run_cmds(
@@ -4992,4 +4994,12 @@ ProcessId=10136
         );
         assert_eq!(pids.len(), 0);
     }
+}
+
+// VM Tech: files copied from a downloaded zip keep the "from the internet" mark, and Smart App Control
+// then blocks the desktop / Start menu shortcuts. Clear the mark on our own installed files and shortcuts.
+fn vmtech_unblock_cmd(path: &str, start_menu: &str, app_name: &str) -> String {
+    format!(
+        "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Get-ChildItem -LiteralPath '{path}' -Recurse -File -ErrorAction SilentlyContinue | Unblock-File; Get-Item -LiteralPath '%PUBLIC%\\Desktop\\{app_name}.lnk','{start_menu}\\{app_name}.lnk','{start_menu}\\Uninstall {app_name}.lnk','%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk' -ErrorAction SilentlyContinue | Unblock-File\""
+    )
 }
