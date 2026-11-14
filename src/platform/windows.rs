@@ -3460,7 +3460,8 @@ pub fn install_service() -> bool {
         log::debug!("{err}");
         return true;
     }
-    run_after_run_cmds(false);
+    // VM Tech: never pop the main window after (re)creating the service; clients only see the VM Tech app.
+    run_after_run_cmds(true);
     std::process::exit(0);
 }
 
