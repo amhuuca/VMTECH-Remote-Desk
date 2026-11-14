@@ -84,12 +84,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.center,
         child: loadLogo(),
       ),
-      // VM Tech: "Powered by RustDesk" sits under the logo as its tagline.
-      if (bind.isCustomClient())
-        Align(
-          alignment: Alignment.centerRight,
-          child: loadPowered(context).marginOnly(right: 12),
-        ),
+      // VM Tech: "Powered by RustDesk" is part of the logo image (tagline under VM TECH).
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),

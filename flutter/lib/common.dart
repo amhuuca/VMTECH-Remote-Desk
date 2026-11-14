@@ -3781,17 +3781,17 @@ Widget loadPowered(BuildContext context) {
         launchUrl(Uri.parse('https://rustdesk.com'));
       },
       child: Opacity(
-          opacity: 0.6,
+          opacity: 0.5,
           child: Text(
             translate("powered_by_me"),
             overflow: TextOverflow.clip,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
-                ?.copyWith(fontSize: 10, letterSpacing: 0.3, fontStyle: FontStyle.italic),
+                ?.copyWith(fontSize: 9, decoration: TextDecoration.underline),
           )),
     ),
-  ).marginOnly(top: 2, bottom: 4);
+  ).marginOnly(top: 6);
 }
 
 const _kDefaultLogoAsset = 'assets/logo.png';
