@@ -401,7 +401,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    translate("Your Desktop"),
+                    // VM Tech: name the app on its home screen.
+                    bind.mainGetAppNameSync() == 'VMTechSupport'
+                        ? 'VM Tech Product Support'
+                        : bind.mainGetAppNameSync() == 'VMTechDesk'
+                            ? 'VM Tech Remote Support'
+                            : translate("Your Desktop"),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
@@ -412,7 +417,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           ),
           if (!isOutgoingOnly)
             Text(
-              translate("desk_tip"),
+              bind.mainGetAppNameSync() == 'VMTechSupport'
+                  ? 'Free help for VM TECH products. Read us the ID and the password below. The password changes after every connection.'
+                  : translate("desk_tip"),
               overflow: TextOverflow.clip,
               style: Theme.of(context).textTheme.bodySmall,
             ),
