@@ -80,15 +80,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isOutgoingOnly = bind.isOutgoingOnly();
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
-      if (bind.isCustomClient())
-        Align(
-          alignment: Alignment.center,
-          child: loadPowered(context),
-        ),
       Align(
         alignment: Alignment.center,
         child: loadLogo(),
       ),
+      // VM Tech: "Powered by RustDesk" sits under the logo as its tagline.
+      if (bind.isCustomClient())
+        Align(
+          alignment: Alignment.centerRight,
+          child: loadPowered(context).marginOnly(right: 12),
+        ),
       buildTip(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
