@@ -173,6 +173,46 @@ jobs:
           }
           Get-ChildItem out/*.zip | ForEach-Object { "{0}  {1:N1} MB  {2}" -f $_.Name, ($_.Length/1MB), (Get-FileHash $_ -Algorithm SHA256).Hash }
 
+      # One-file setup programs (RustDesk's portable packer). The setup unpacks into %LOCALAPPDATA%\<app>,
+      # so nothing carries the "downloaded from the internet" mark and Smart App Control allows the
+      # shortcuts. A name ending in "Install.exe" opens the install screen straight away.
+      - name: Make the one-file setups (Staff, Product Support)
+        shell: pwsh
+        run: |
+          python3 -m pip install -r libs/portable/requirements.txt
+          foreach ($v in @(@{name='VMTechStaff'; exe='VMTechStaff.exe'}, @{name='VMTechSupport'; exe='VMTechSupport.exe'})) {
+            $dir = (Resolve-Path "out/$($v.name)").Path
+            python3 libs/portable/generate.py -f "$dir" -o libs/portable -e "$dir\$($v.exe)"
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            Copy-Item libs/portable/target/release/rustdesk-portable-packer.exe "out/$($v.name)-Install.exe"
+          }
+          Get-ChildItem out/*-Install.exe | ForEach-Object { "{0}  {1:N1} MB" -f $_.Name, ($_.Length/1MB) }
+
+      - name: Sign the setups
+        if: ${{ env.HAS_SIGNING == 'yes' }}
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: vmtechsigning
+          certificate-profile-name: vmtech-public
+          files-folder: ${{ github.workspace }}\out
+          files-folder-filter: exe
+          files-folder-recurse: false
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Check the setup signatures
+        if: ${{ env.HAS_SIGNING == 'yes' }}
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem out/*-Install.exe | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' }
+          $bad | ForEach-Object { "NOT SIGNED: $($_.FullName)" }
+          if ($bad) { exit 1 }
+
       - name: Upload VM Tech Desk (clients)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -211,4 +251,4 @@ jobs:
           gh release view client-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create client-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "VM Tech Desk (client) - latest" \
               --notes "Signed VM Tech Desk client app for Windows x64. Installed by the VM Tech Remote installer. Based on RustDesk (AGPL-3.0); source: this repository, branch vmtech."
-          gh release upload client-latest out/VMTechDesk-client-windows-x64.zip out/VMTechDesk-inside-windows-x64.zip out/VMTechSupport-windows-x64.zip out/VMTechStaff-windows-x64.zip --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload client-latest out/VMTechDesk-client-windows-x64.zip out/VMTechDesk-inside-windows-x64.zip out/VMTechSupport-windows-x64.zip out/VMTechStaff-windows-x64.zip out/VMTechStaff-Install.exe out/VMTechSupport-Install.exe --clobber --repo "$GITHUB_REPOSITORY"
