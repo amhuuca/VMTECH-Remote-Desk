@@ -184,7 +184,7 @@ jobs:
             $dir = (Resolve-Path "out/$($v.name)").Path
             python3 libs/portable/generate.py -f "$dir" -o libs/portable -e "$dir\$($v.exe)"
             if ($LASTEXITCODE -ne 0) { exit 1 }
-            Copy-Item libs/portable/target/release/rustdesk-portable-packer.exe "out/$($v.name)-Install.exe"
+            $packer = @("target/release/rustdesk-portable-packer.exe","libs/portable/target/release/rustdesk-portable-packer.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $packer) { "packer exe not found"; exit 1 }; Copy-Item $packer "out/$($v.name)-Install.exe"
           }
           Get-ChildItem out/*-Install.exe | ForEach-Object { "{0}  {1:N1} MB" -f $_.Name, ($_.Length/1MB) }
 
