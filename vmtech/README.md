@@ -9,7 +9,7 @@ VM Tech (vmtech.ca) clients and staff. All credit for the remote desktop itself 
 - Icons (`res/*.png`, `res/*.ico`, `flutter/windows/runner/resources/app_icon.ico`) and the in-app
   logo (`vmtech/icon.png`, `vmtech/logo.png`, copied into `flutter/assets/` at build time).
 - `flutter/windows/runner/Runner.rc` — product name "VM Tech Remote".
-- `.github/workflows/vmtech-windows.yml` — builds Windows x64 only and outputs two zips.
+- `.github/workflows/vmtech-windows.yml` — builds Windows x64 only, signs every exe/dll (Azure Artifact Signing) and publishes the release `client-latest`: zips for VMTechDesk-client, VMTechDesk-inside, VMTechSupport, VMTechStaff, plus one-file signed setups `VMTechStaff-Install.exe` and `VMTechSupport-Install.exe`.
 
 ## The two apps (same program, different signed `custom.txt` next to the exe)
 - **VMTechDesk** (`custom-client.txt`, `VMTechDesk.exe`) — for clients: incoming only (shows "Your ID",
@@ -43,3 +43,16 @@ The settings files are signed; the private signing key is NOT in this repository
   one-time password**; the customer reads both to us, or clicks **Accept** when we connect (approve-mode both). The password
   changes after every successful connection (and after 10 wrong tries).
 - Reports go to `https://app.vmtech.ca/rdp` → the portal logs these sessions at $0 (never billed).
+
+
+## Set up on a new computer
+Everything heavy (Rust + Flutter build, signing, packaging) runs on **GitHub Actions** — a PC never needs Rust, Flutter or Visual Studio for this repo. Sync through GitHub only: pull before you start, push when done.
+
+1. Git + GitHub Desktop, signed in as `amhuuca`. Clone this repo into `Documents\GitHub` (not inside OneDrive/Dropbox). Work on branch **`vmtech`**.
+2. Build: GitHub → Actions → **VM Tech Windows build** → Run workflow → branch `vmtech` (about 40 minutes). It replaces the files on the `client-latest` release.
+3. Changing a `custom-*.txt` needs the **private settings-signing key** (`custom-client-signing.key`). It is **never** in GitHub, chat or e-mail. Keep it in the password manager / an encrypted backup and copy it to the PC only when re-signing (PyNaCl: sign the JSON, base64 the signed message).
+
+Settings (names only, values in GitHub → Settings → Secrets → Actions): `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`.
+There is no `.env`. `Cargo.lock` is committed; Flutter versions are pinned in the workflow.
+
+The other upstream RustDesk workflows (nightly, CI, F-Droid, webpki-roots …) are not used by VM Tech.
