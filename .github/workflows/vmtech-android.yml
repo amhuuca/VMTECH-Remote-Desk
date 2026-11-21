@@ -196,6 +196,14 @@ jobs:
           sed -i 's|<color name="ic_launcher_background">#ffffff</color>|<color name="ic_launcher_background">#5a0f26</color>|' flutter/android/app/src/main/res/values/*.xml
           cp vmtech/icon.png flutter/assets/icon.png
           cp vmtech/logo.png flutter/assets/logo.png
+          # Title at the top of the app: "VM Tech Staff" (the signed settings keep the name VMTechStaff).
+          f=flutter/lib/mobile/pages/home_page.dart
+          grep -q 'return Text(bind.mainGetAppNameSync());' "$f"
+          sed -i "s|return Text(bind.mainGetAppNameSync());|return Text('VM Tech Staff');|" "$f"
+          # "Powered by RustDesk" is already the tagline in the VM TECH logo; drop the extra link in Settings.
+          f=flutter/lib/mobile/pages/settings_page.dart
+          grep -q 'child: loadPowered(context),' "$f"
+          sed -i 's|child: loadPowered(context),|child: const SizedBox.shrink(),|' "$f"
 
       - name: Build APK
         shell: bash
