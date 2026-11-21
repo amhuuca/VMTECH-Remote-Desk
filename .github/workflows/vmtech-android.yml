@@ -1,8 +1,8 @@
-# VM Tech: build "VM Tech Remote Support" for Android phones (one APK for arm64 + armv7 phones).
-# Same app as the Windows client: vmtech/custom-client.txt (signed) is built into the APK, so it uses
-# rd.vmtech.ca and VM Tech's key, and the client must accept every connection.
+# VM Tech: build "VM TECH Staff-RS" for technicians' Android phones (one APK for arm64 + armv7 phones).
+# Same as the Windows staff app: vmtech/custom-staff.txt (signed) is built into the APK, so it uses
+# rd.vmtech.ca and VM Tech's key, and it only connects OUT to clients' computers.
 # Run it: GitHub → Actions → "VM Tech Android build" → Run workflow. Takes ~40–60 min the first time.
-# Output: VMTechRemoteSupport-android.apk on the public release "client-latest".
+# Output: VMTechStaff-android.apk on the public release "client-latest".
 # Signing: if the secrets ANDROID_SIGNING_KEY / ANDROID_ALIAS / ANDROID_KEY_STORE_PASSWORD / ANDROID_KEY_PASSWORD
 # exist, the APK is signed with that key (updates install over the old app). Otherwise it uses a
 # throw-away debug key (fine for testing; uninstall the old app before installing a new build).
@@ -176,8 +176,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          CFG=$(tr -d '\r\n' < vmtech/custom-client.txt)
-          [ -n "$CFG" ] || { echo "vmtech/custom-client.txt is empty"; exit 1; }
+          CFG=$(tr -d '\r\n' < vmtech/custom-staff.txt)
+          [ -n "$CFG" ] || { echo "vmtech/custom-staff.txt is empty"; exit 1; }
           # The signed VM Tech settings go into both places the Android app starts the core.
           f=flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
           grep -q 'FFI.startServer(configPath, homePath, "")' "$f"
@@ -186,11 +186,11 @@ jobs:
           grep -q "customClientConfig: ''," "$f"
           sed -i "s|customClientConfig: '',|customClientConfig: '$CFG',|" "$f"
           # Own app id, so it installs next to (not over) the normal RustDesk app.
-          sed -i 's|applicationId "com.carriez.flutter_hbb"|applicationId "ca.vmtech.remotesupport"|' flutter/android/app/build.gradle
-          grep -q 'applicationId "ca.vmtech.remotesupport"' flutter/android/app/build.gradle
+          sed -i 's|applicationId "com.carriez.flutter_hbb"|applicationId "ca.vmtech.staff"|' flutter/android/app/build.gradle
+          grep -q 'applicationId "ca.vmtech.staff"' flutter/android/app/build.gradle
           # Name shown under the icon, and in Settings → Accessibility.
-          sed -i 's|android:label="RustDesk Input"|android:label="VM Tech Input"|; s|android:label="RustDesk"|android:label="VM Tech Remote Support"|' flutter/android/app/src/main/AndroidManifest.xml
-          grep -q 'VM Tech Remote Support' flutter/android/app/src/main/AndroidManifest.xml
+          sed -i 's|android:label="RustDesk Input"|android:label="VM Tech Input"|; s|android:label="RustDesk"|android:label="VM TECH Staff-RS"|' flutter/android/app/src/main/AndroidManifest.xml
+          grep -q 'VM TECH Staff-RS' flutter/android/app/src/main/AndroidManifest.xml
           # Logo: app icon + in-app logo.
           cp -r vmtech/android/res/. flutter/android/app/src/main/res/
           sed -i 's|<color name="ic_launcher_background">#ffffff</color>|<color name="ic_launcher_background">#5a0f26</color>|' flutter/android/app/src/main/res/values/*.xml
@@ -214,7 +214,7 @@ jobs:
           flutter build apk --release --target-platform android-arm64,android-arm
           popd
           mkdir -p out
-          mv flutter/build/app/outputs/flutter-apk/app-release.apk out/VMTechRemoteSupport-android.apk
+          mv flutter/build/app/outputs/flutter-apk/app-release.apk out/VMTechStaff-android.apk
 
       - name: Setup sign tool version variable
         if: env.HAS_SIGNING == 'yes'
@@ -237,13 +237,13 @@ jobs:
       - name: Use signed APK
         if: env.HAS_SIGNING == 'yes'
         shell: bash
-        run: mv -f "${{ steps.sign.outputs.signedReleaseFile }}" out/VMTechRemoteSupport-android.apk
+        run: mv -f "${{ steps.sign.outputs.signedReleaseFile }}" out/VMTechStaff-android.apk
 
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: VMTechRemoteSupport-android
-          path: out/VMTechRemoteSupport-android.apk
+          name: VMTechStaff-android
+          path: out/VMTechStaff-android.apk
 
       - name: Publish (release client-latest)
         shell: bash
@@ -252,4 +252,4 @@ jobs:
         run: |
           gh release view client-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create client-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "VM Tech Desk (client) - latest" --notes "VM Tech client apps."
-          gh release upload client-latest out/VMTechRemoteSupport-android.apk --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload client-latest out/VMTechStaff-android.apk --clobber --repo "$GITHUB_REPOSITORY"
