@@ -1,0 +1,177 @@
+# VM Tech: build "VM Tech Staff" for technicians' iPhones (connects OUT to clients' computers only).
+# Same as the Android/Windows staff app: vmtech/custom-staff.txt (signed) is built in, so it uses
+# rd.vmtech.ca and VM Tech's key. App id ca.vmtech.staff.
+# Run it: GitHub → Actions → "VM Tech iPhone build" → Run workflow (branch vmtech).
+# Without Apple secrets it only checks that the app builds. With these repository secrets it signs the
+# app and uploads it to TestFlight (then add testers in App Store Connect → TestFlight):
+#   APPLE_TEAM_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID,
+#   APP_STORE_CONNECT_API_KEY (the whole text of the .p8 file; key role Admin).
+name: VM Tech iPhone build
+
+on:
+  workflow_dispatch:
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+  BUNDLE_ID: "ca.vmtech.staff"
+
+jobs:
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+
+  build-ios:
+    needs: [generate-bridge]
+    runs-on: macos-latest
+    env:
+      HAS_APPLE: ${{ secrets.APP_STORE_CONNECT_API_KEY != '' && secrets.APPLE_TEAM_ID != '' && 'yes' || 'no' }}
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install dependencies
+        run: brew install nasm yasm
+
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+
+      - name: VM Tech key check
+        run: grep -q 'n+cqdRNxSjVwOBY6glqlcIUCtLb3T9yXf0K6bCxKBAQ=' src/common.rs || { echo "VM Tech key missing in src/common.rs"; exit 1; }
+
+      - name: Install flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Patch flutter
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        shell: bash
+        run: |
+          if ! $VCPKG_ROOT/vcpkg install --triplet arm64-ios --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r f; do echo "$f:"; cat "$f"; done
+            exit 1
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios
+          components: "rustfmt"
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          prefix-key: vmtech-ios
+          key: aarch64-apple-ios
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Build rustdesk lib
+        run: |
+          rustup target add aarch64-apple-ios
+          cargo build --locked --features flutter,hwcodec --release --target aarch64-apple-ios --lib
+
+      - name: VM Tech branding and settings
+        shell: bash
+        run: |
+          set -e
+          CFG=$(tr -d '\r\n' < vmtech/custom-staff.txt)
+          [ -n "$CFG" ] || { echo "vmtech/custom-staff.txt is empty"; exit 1; }
+          f=flutter/lib/models/native_model.dart
+          grep -q "customClientConfig: ''," "$f"
+          sed -i '' "s|customClientConfig: '',|customClientConfig: '$CFG',|" "$f"
+          # Title at the top of the app.
+          f=flutter/lib/mobile/pages/home_page.dart
+          grep -q 'return Text(bind.mainGetAppNameSync());' "$f"
+          sed -i '' "s|return Text(bind.mainGetAppNameSync());|return Text('VM Tech Staff');|" "$f"
+          # "Powered by RustDesk" is already the tagline in the VM TECH logo.
+          f=flutter/lib/mobile/pages/settings_page.dart
+          grep -q 'child: loadPowered(context),' "$f"
+          sed -i '' 's|child: loadPowered(context),|child: const SizedBox.shrink(),|' "$f"
+          # App id, name under the icon, icon, in-app logo.
+          P=flutter/ios/Runner.xcodeproj/project.pbxproj
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.carriez.flutterHbb;' "$P"
+          sed -i '' "s|PRODUCT_BUNDLE_IDENTIFIER = com.carriez.flutterHbb;|PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;|g" "$P"
+          plutil -replace CFBundleDisplayName -string "VM Tech Staff" flutter/ios/Runner/Info.plist
+          plutil -replace CFBundleName -string "VM Tech Staff" flutter/ios/Runner/Info.plist
+          plutil -replace ITSAppUsesNonExemptEncryption -bool NO flutter/ios/Runner/Info.plist
+          cp vmtech/ios/AppIcon.appiconset/* flutter/ios/Runner/Assets.xcassets/AppIcon.appiconset/
+          cp vmtech/icon.png flutter/assets/icon.png
+          cp vmtech/logo.png flutter/assets/logo.png
+          # No push notifications / Wi-Fi info needed for the staff app (keeps signing simple).
+          cat > flutter/ios/Runner/Runner.entitlements <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict/>
+          </plist>
+          EOF
+          sed -i '' 's/^          //' flutter/ios/Runner/Runner.entitlements
+          plutil -lint flutter/ios/Runner/Runner.entitlements
+
+      - name: Build app (Flutter)
+        shell: bash
+        run: |
+          cd flutter
+          flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+
+      - name: Sign and upload to TestFlight
+        if: env.HAS_APPLE == 'yes'
+        shell: bash
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          set -e
+          KEY="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          printf '%s' "$API_KEY" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
+          cd flutter/ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" "${AUTH[@]}" archive
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/out" "${AUTH[@]}"
+          rm -f "$KEY"
+          echo "Uploaded build ${{ github.run_number }} to App Store Connect. It shows in TestFlight after Apple processes it (5-30 min)."
+
+      - name: No Apple keys yet
+        if: env.HAS_APPLE != 'yes'
+        run: echo "App builds OK. Add the Apple secrets (see top of this file) to sign it and send it to TestFlight."
