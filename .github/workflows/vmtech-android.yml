@@ -191,6 +191,9 @@ jobs:
           # Name shown under the icon, and in Settings → Accessibility.
           sed -i 's|android:label="RustDesk Input"|android:label="VM Tech Input"|; s|android:label="RustDesk"|android:label="VM TECH Staff-RS"|' flutter/android/app/src/main/AndroidManifest.xml
           grep -q 'VM TECH Staff-RS' flutter/android/app/src/main/AndroidManifest.xml
+          # The portal's Connect button opens vmtechstaff://connection/new/<ID> (same link as the Windows staff app).
+          sed -i 's|<data android:scheme="rustdesk" />|<data android:scheme="vmtechstaff" />|' flutter/android/app/src/main/AndroidManifest.xml
+          grep -q 'android:scheme="vmtechstaff"' flutter/android/app/src/main/AndroidManifest.xml
           # Logo: app icon + in-app logo.
           cp -r vmtech/android/res/. flutter/android/app/src/main/res/
           sed -i 's|<color name="ic_launcher_background">#ffffff</color>|<color name="ic_launcher_background">#5a0f26</color>|' flutter/android/app/src/main/res/values/*.xml

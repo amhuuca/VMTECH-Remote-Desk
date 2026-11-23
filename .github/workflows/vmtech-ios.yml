@@ -117,6 +117,8 @@ jobs:
           sed -i '' "s|PRODUCT_BUNDLE_IDENTIFIER = com.carriez.flutterHbb;|PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;|g" "$P"
           plutil -replace CFBundleDisplayName -string "VM Tech Staff" flutter/ios/Runner/Info.plist
           plutil -replace CFBundleName -string "VM Tech Staff" flutter/ios/Runner/Info.plist
+          # The portal's Connect button opens vmtechstaff://connection/new/<ID>.
+          plutil -replace CFBundleURLTypes.0.CFBundleURLSchemes.0 -string vmtechstaff flutter/ios/Runner/Info.plist
           plutil -replace ITSAppUsesNonExemptEncryption -bool NO flutter/ios/Runner/Info.plist
           cp vmtech/ios/AppIcon.appiconset/* flutter/ios/Runner/Assets.xcassets/AppIcon.appiconset/
           cp vmtech/icon.png flutter/assets/icon.png
