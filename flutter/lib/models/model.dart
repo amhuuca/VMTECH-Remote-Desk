@@ -1402,6 +1402,9 @@ class FfiModel with ChangeNotifier {
       final optLocal = bind.mainGetLocalOption(key: kOptionTouchMode);
       if (optLocal != '') {
         _touchMode = optLocal == 'Y';
+      } else if (isMobile) {
+        // VM Tech staff app: on a phone, tap where you want to click (touch mode) unless the user switched it off.
+        _touchMode = true;
       } else {
         final optSession = await bind.sessionGetOption(
             sessionId: sessionId, arg: kOptionTouchMode);
