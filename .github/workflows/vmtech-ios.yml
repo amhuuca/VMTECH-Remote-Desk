@@ -151,7 +151,9 @@ jobs:
         run: |
           set -e
           KEY="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
-          printf '%s' "$API_KEY" > "$KEY"
+          # Keys pasted from Windows Notepad have CRLF line ends (Apple's PEM reader rejects them): strip them.
+          printf '%s\n' "$API_KEY" | tr -d '\r' > "$KEY"
+          grep -q 'BEGIN PRIVATE KEY' "$KEY" || { echo "APP_STORE_CONNECT_API_KEY doesn't look like the .p8 file (no BEGIN PRIVATE KEY line)."; exit 1; }
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
           cd flutter/ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release \
